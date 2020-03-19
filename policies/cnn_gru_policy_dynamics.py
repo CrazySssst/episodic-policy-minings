@@ -163,6 +163,11 @@ class CnnGruPolicy(StochasticPolicy):
             self.aux_loss, self.int_rew, self.feat_var, self.max_feat = self.define_multi_head_self_prediction_rew(convfeat=convfeat, rep_size=rep_size, enlargement=enlargement)
 
 
+
+        self.stage_rnd = tf.constant(1.)
+        self.stage_prob = tf.constant(1.)
+
+
         if div_type =='cls':
             with tf.variable_scope("div", reuse=False):
                 #self.define_rew_discriminator(convfeat=convfeat, rep_size=256)
