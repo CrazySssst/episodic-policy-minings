@@ -374,8 +374,8 @@ class InteractionState(object):
             #ram_path = './ram_state_500_7room'
             #path = './ram_state_500_monitor_rews_7room'
 
-            ram_path='./ram_state_6700'
-            path='./ram_state_6700_monitor_rews'
+            #ram_path='./ram_state_6700'
+            #path='./ram_state_6700_monitor_rews'
 
             #ram_path='./ram_state_6600_13room'
             #path='./ram_state_6600_monitor_rews_13room'
@@ -386,8 +386,8 @@ class InteractionState(object):
             #ram_path='./ram_state_6600_23room'
             #path='./ram_state_6600_monitor_rews_23room'
 
-            #ram_path='./ram_state_6700_7room'
-            #path='./ram_state_6700_monitor_rews_7room'
+            ram_path='./ram_state_6700_7room'
+            path='./ram_state_6700_monitor_rews_7room'
 
 
             #ram_path='./ram_state_7700_10room'

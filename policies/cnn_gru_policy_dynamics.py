@@ -164,7 +164,8 @@ class CnnGruPolicy(StochasticPolicy):
         if div_type =='cls':
             with tf.variable_scope("div", reuse=False):
                 #self.define_rew_discriminator(convfeat=convfeat, rep_size=256)
-                self.define_rew_discriminator_v2(convfeat=convfeat, rep_size=256)
+                with tf.variable_scope("int", reuse=False):
+                   self.disc_logits, self.all_div_prob, self.sp_prob, self.div_rew,  self.disc_pd , self.disc_nlp  =  self.define_rew_discriminator_v2(convfeat=convfeat, rep_size=512, use_rew = True)
         else:
             self.div_rew = tf.constant(0.)
 
@@ -426,21 +427,23 @@ class CnnGruPolicy(StochasticPolicy):
 
         return aux_loss, int_rew, feat_var, max_feat
 
-
-    def define_rew_discriminator_v2(self, convfeat, rep_size):
+    def define_rew_discriminator_v2(self, convfeat, rep_size,use_rew = False):
 
         output_shape = [self.sy_nenvs * (self.sy_nsteps - 1)]
         
         sample_prob = tf.reshape(self.sample_agent_prob,tf.stack(output_shape))
         game_score =  tf.reshape(self.game_score, tf.stack([self.sy_nenvs * (self.sy_nsteps - 1), 1]))
 
-        rew_agent_label = tf.one_hot(self.rew_agent_label, self.num_agents, axis=-1)
-        rew_agent_label = tf.reshape(rew_agent_label,(-1,self.num_agents ))
+
+        rew_agent_label = tf.reshape(self.rew_agent_label, tf.stack([self.sy_nenvs * (self.sy_nsteps - 1), 1]))
+
+        #rew_agent_label = tf.one_hot(self.rew_agent_label, self.num_agents, axis=-1)
+        #rew_agent_label = tf.reshape(rew_agent_label,(-1,self.num_agents ))
 
         for ph in self.ph_ob.values():
             if len(ph.shape.as_list()) == 5:  # B,T,H,W,C
 
-                phi = ph[:,:-1]
+                phi = ph[:,1:]
                 phi = tf.cast(phi, tf.float32)
                 phi = tf.reshape(phi, (-1, *ph.shape.as_list()[-3:]))[:, :, :, -1:]
                 phi = phi /255.
@@ -451,7 +454,8 @@ class CnnGruPolicy(StochasticPolicy):
                 last_rew_ob = tf.reshape(last_rew_ob, (-1, *last_rew_ob.shape.as_list()[-3:]))[:, :, :, -1:]
                 last_rew_ob = last_rew_ob /255.
 
-                #phi = tf.concat([phi,last_rew_ob], axis=-1)
+                if use_rew:
+                    phi = tf.concat([phi,last_rew_ob], axis=-1)
 
                 phi = tf.nn.leaky_relu(conv(phi, 'c1r', nf=convfeat * 1, rf=8, stride=4, init_scale=np.sqrt(2)))
                 #[20,20] [8,8]
@@ -462,28 +466,33 @@ class CnnGruPolicy(StochasticPolicy):
         
                 phi = tf.nn.relu(fc(phi, 'fc1r', nh=rep_size, init_scale=np.sqrt(2)))
                 phi = tf.nn.relu(fc(phi, 'fc2r', nh=rep_size, init_scale=np.sqrt(2)))
-                self.disc_logits = fc(phi, 'fc3r', nh= self.num_agents, init_scale=np.sqrt(2))
+                disc_logits = fc(phi, 'fc3r', nh= self.num_agents, init_scale=np.sqrt(2))
 
         one_hot_gidx = tf.one_hot(self.ph_agent_idx, self.num_agents , axis=-1)
         one_hot_gidx = tf.reshape(one_hot_gidx,(-1,self.num_agents))
 
 
 
-        all_div_prob = tf.nn.softmax(self.disc_logits, axis=-1)
-        self.all_div_prob = tf.reshape(all_div_prob, (self.sy_nenvs, self.sy_nsteps - 1, self.num_agents))
+        flatten_all_div_prob = tf.nn.softmax(disc_logits, axis=-1)
+        all_div_prob = tf.reshape(flatten_all_div_prob, (self.sy_nenvs, self.sy_nsteps - 1, self.num_agents))
 
-        sp_prob = tf.reduce_sum(one_hot_gidx * all_div_prob, axis=1)
-        self.sp_prob = tf.reshape(sp_prob, (self.sy_nenvs, self.sy_nsteps - 1))
+        sp_prob = tf.reduce_sum(one_hot_gidx * flatten_all_div_prob, axis=1)
+        sp_prob = tf.reshape(sp_prob, (self.sy_nenvs, self.sy_nsteps - 1))
 
 
-        self.div_rew = -1 * tf.nn.softmax_cross_entropy_with_logits_v2(logits=self.disc_logits, labels=one_hot_gidx)
-        base_rew = tf.log(0.7)
-        self.div_rew = self.div_rew - tf.log(sample_prob)
-        self.div_rew = self.div_rew
-        self.div_rew = tf.reshape(self.div_rew, (self.sy_nenvs, self.sy_nsteps - 1))
+        div_rew = -1 * tf.nn.softmax_cross_entropy_with_logits_v2(logits=disc_logits, labels=one_hot_gidx)
+        base_rew = tf.log(0.01)
+        div_rew = div_rew - tf.log(sample_prob)
+
+        div_rew = tf.reshape(div_rew, (self.sy_nenvs, self.sy_nsteps - 1))
         
-        self.disc_loss = tf.nn.softmax_cross_entropy_with_logits_v2(logits=self.disc_logits, labels=rew_agent_label)
 
+        disc_pdtype = CategoricalPdType(self.num_agents)
+        disc_pd = disc_pdtype.pdfromflat(disc_logits)
+
+        disc_nlp = disc_pd.neglogp(rew_agent_label)
+
+        return disc_logits, all_div_prob, sp_prob, div_rew, disc_pd , disc_nlp
 
     def define_self_prediction_rew(self, convfeat, rep_size, enlargement):
         #RND.
