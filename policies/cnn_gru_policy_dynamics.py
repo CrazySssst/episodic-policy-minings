@@ -620,7 +620,10 @@ class CnnGruPolicy(StochasticPolicy):
         a, vpred_int,vpred_ext, nlp, newstate, ent = tf_util.get_session().run(
             [self.a_samp, self.vpred_int_rollout,self.vpred_ext_rollout, self.nlp_samp, self.snext_rollout, self.entropy_rollout],
             feed_dict={**feed1, **feed2})
-        return a[:,0], vpred_int[:,0],vpred_ext[:,0], nlp[:,0], newstate, ent[:,0]
+
+        base_vpred_ext =  np.ones_like(vpred_ext)
+
+        return a[:,0], vpred_int[:,0],vpred_ext[:,0], nlp[:,0], newstate, ent[:,0], base_vpred_ext[:,0]
         
     def get_ph_mean_std(self):
         mean, std = tf.get_default_session().run([self.var_ph_mean,self.var_ph_std])
