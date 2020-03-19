@@ -25,7 +25,7 @@ import time
 
 import pickle
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 
 
@@ -195,8 +195,8 @@ def train(*, env_id, num_env, hps, num_timesteps, seed):
             #load main agen1
             src_agent_idx = 1
 
-            logger.info("load main agent weights from {} agent {}".format(load_path, str(src_agent_idx)))
-            agent.load_agent(src_agent_idx, load_path)
+            #logger.info("load main agent weights from {} agent {}".format(load_path, str(src_agent_idx)))
+            #agent.load_agent(src_agent_idx, load_path)
 
            
             if indep_rnd==False:
@@ -211,7 +211,7 @@ def train(*, env_id, num_env, hps, num_timesteps, seed):
             logger.info("load help info from {} agent {}".format(load_path, str(src_agent_idx)))
             agent.load_help_info(src_agent_idx, load_path)
         
-            agent.clone_agent(src_agent_idx,rnd=False, policy=True, help_info = True) 
+            agent.clone_agent(src_agent_idx,rnd=False, policy=False, help_info = True) 
 
             #logger.info("load main agent weights from {} agent {}".format(load_path, str(2)))
             

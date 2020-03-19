@@ -6,6 +6,8 @@ from stochastic_policy import StochasticPolicy
 from tf_util import get_available_gpus
 from mpi_util import RunningMeanStd
 
+from baselines.common.distributions import CategoricalPdType
+
 import tf_util
 
 def to2d(x):
@@ -47,7 +49,7 @@ class CnnGruPolicy(StochasticPolicy):
                  update_ob_stats_independently_per_gpu=True,
                  proportion_of_exp_used_for_predictor_update=1.,
                  dynamics_bonus = False, num_agents = 1, rnd_type='rnd', div_type='oracle',
-                 indep_rnd = False, indep_policy = False, sd_type='oracle'
+                 indep_rnd = False, indep_policy = False, sd_type='oracle', rnd_mask_prob =1.
                  ):
         StochasticPolicy.__init__(self, scope, ob_space, ac_space)
         self.proportion_of_exp_used_for_predictor_update = proportion_of_exp_used_for_predictor_update
