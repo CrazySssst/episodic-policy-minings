@@ -60,38 +60,58 @@ class CnnGruPolicy(StochasticPolicy):
         }[policy_size]
         rep_size = 512
 
-
-        self.rnd_mask = tf.placeholder(dtype=tf.float32, shape=(None,None,num_agents), name="rnd_mask")      
+        self.rnd_mask = tf.placeholder(dtype=tf.float32, shape=(None,None,num_agents), name="rnd_mask")
+        self.new_rnd_mask = tf.placeholder(dtype=tf.float32, shape=(None,None), name="new_rnd_mask")
+        self.div_train_mask = tf.placeholder(dtype=tf.float32, shape=(None,None), name="div_train_mask")
         self.sample_agent_prob = tf.placeholder(dtype=tf.float32, shape=(None,None,), name="sample_agent_prob")
+        self.stage_label = tf.placeholder(dtype=tf.int32, shape=(None,None), name="stage_label")
 
-        self.game_score = tf.placeholder(dtype=tf.float32, shape= (None, None) , name="game_score")
-        self.last_rew_ob = tf.placeholder(dtype=ob_space.dtype, shape= (None, None) + tuple(ob_space.shape) , name="last_rew_ob")
-        self.rew_agent_label = tf.placeholder(dtype=tf.int32, shape= (None, None,) , name="rew_agent_label")
 
         self.ph_mean = tf.placeholder(dtype=tf.float32, shape=list(ob_space.shape[:2])+[1], name="obmean")
         self.ph_std = tf.placeholder(dtype=tf.float32, shape=list(ob_space.shape[:2])+[1], name="obstd")
         self.ph_count = tf.placeholder(dtype=tf.float32, shape=(), name="obcount")
 
+
         self.sep_ph_mean = tf.placeholder(dtype=tf.float32, shape= (None, None,) + ob_space.shape[:2] +(1,) , name="sep_obmean")
         self.sep_ph_std = tf.placeholder(dtype=tf.float32, shape= (None, None,) + ob_space.shape[:2] + (1,), name="sep_obstd")
         self.sep_ph_count = tf.placeholder(dtype=tf.float32, shape=(), name="sep_obcount")
 
+        self.game_score = tf.placeholder(dtype=tf.float32, shape= (None, None) , name="game_score")
+        self.last_rew_ob = tf.placeholder(dtype=ob_space.dtype, shape= (None, None) + tuple(ob_space.shape) , name="last_rew_ob")
+        
+        self.div_ph_mean = tf.placeholder(dtype=tf.float32, shape= list(ob_space.shape[:2])+[1] , name="div_obmean")
+        self.div_ph_std = tf.placeholder(dtype=tf.float32, shape= list(ob_space.shape[:2])+[1], name="div_obstd")
 
-        self.var_ph_mean = tf.get_variable("var_ph_mean", list(ob_space.shape[:2])+[1], initializer=tf.constant_initializer(0.0))
-        self.var_ph_std = tf.get_variable("var_ph_std", list(ob_space.shape[:2])+[1], initializer=tf.constant_initializer(0.0))
-        self.var_ph_count = tf.get_variable("var_ph_count", (), initializer=tf.constant_initializer(0.0))
+        self.idle_agent_label = tf.placeholder(dtype=tf.int32, shape= (None, None,) , name="idle_agent_label")
+        self.rew_agent_label = tf.placeholder(dtype=tf.int32, shape= (None, None,) , name="rew_agent_label")
+       
+
+        #self.var_ph_mean = tf.get_variable("var_ph_mean", list(ob_space.shape[:2])+[1], initializer=tf.constant_initializer(0.0))
+        #self.var_ph_std = tf.get_variable("var_ph_std", list(ob_space.shape[:2])+[1], initializer=tf.constant_initializer(0.0))
+        #self.var_ph_count = tf.get_variable("var_ph_count", (), initializer=tf.constant_initializer(0.0))
+
+
+
+        self.sd_ph_mean = tf.placeholder(dtype=tf.float32, shape=list(ob_space.shape[:2])+[1], name="sd_obmean")
+        self.sd_ph_std = tf.placeholder(dtype=tf.float32, shape=list(ob_space.shape[:2])+[1], name="sd_obstd")
 
         memsize *= enlargement
         hidsize *= enlargement
         convfeat = 16*enlargement
 
-
         self.ob_rms_list = [RunningMeanStd(shape=list(ob_space.shape[:2])+[1], use_mpi= not update_ob_stats_independently_per_gpu) \
-                                for _ in range(num_agents)]        
-        self.ob_rms = RunningMeanStd(shape=list(ob_space.shape[:2])+[1], use_mpi=not update_ob_stats_independently_per_gpu)
+                                for _ in range(num_agents)]
+        self.ob_rms = RunningMeanStd(shape=list(ob_space.shape[:2])+[1], use_mpi= not update_ob_stats_independently_per_gpu)
+
+        self.diversity_ob_rms = RunningMeanStd(shape=list(ob_space.shape[:2])+[1], use_mpi= not update_ob_stats_independently_per_gpu)
+
         ph_istate = tf.placeholder(dtype=tf.float32,shape=(None,memsize), name='state')
         pdparamsize = self.pdtype.param_shape()[0]
+
         self.memsize = memsize
+        self.num_agents = num_agents
+        self.indep_rnd = indep_rnd
+        self.indep_policy = indep_policy
 
         self.num_agents = num_agents
 
