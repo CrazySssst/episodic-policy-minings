@@ -221,11 +221,16 @@ class CnnPolicy(StochasticPolicy):
 
 
 
+        random_gidx = tf.random_uniform(shape=tf.shape(self.ph_agent_idx), minval=0, maxval=self.num_agents, dtype=tf.int32)
+        one_hot_random_gidx = tf.one_hot(random_gidx, self.num_agents, axis=-1)
 
-        one_hot_gidx = tf.one_hot(1-self.ph_agent_idx, self.num_agents, axis=-1)
-        #[batch,nstep, ngroups] -> [batch * nstep, ngroups,1]
+        one_hot_gidx = tf.one_hot(self.ph_agent_idx, self.num_agents, axis=-1)
         one_hot_gidx = tf.reshape(one_hot_gidx,(-1,self.num_agents,1))
-        self.other_pdparam = tf.reduce_sum(one_hot_gidx * self.all_pdparam,axis=1)
+
+        self.kl_mask = tf.cast(one_hot_random_gidx != one_hot_gidx, tf.float32)
+
+
+        self.other_pdparam = tf.reduce_sum(one_hot_random_gidx * self.all_pdparam,axis=1)
         self.other_pdparam = tf.reshape(self.other_pdparam, (self.sy_nenvs, self.sy_nsteps - 1, pdparamsize))
 
         '''

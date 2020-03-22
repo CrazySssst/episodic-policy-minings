@@ -709,7 +709,7 @@ class PpoAgent(object):
 
             kl_loss = kl =tf.constant(0.)
             if use_kl:
-                kl = tf.reduce_mean(self.stochpol.pd_opt.kl_v2(self.stochpol.other_pdparam))
+                kl = tf.reduce_sum(self.stochpol.kl_mask * self.stochpol.pd_opt.kl_v2(self.stochpol.other_pdparam)) / tf.maximum(tf.reduce_sum(self.stochpol.kl_mask), 1.)
                 kl_loss = -0.01 * kl
 
             loss = pg_loss + ent_loss + vf_loss + kl_loss
