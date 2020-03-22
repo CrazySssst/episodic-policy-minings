@@ -92,7 +92,7 @@ def clac_base_int_weight(num_agents,min_w=0.25,max_w=1.):
         w = w + delta
         #w = 0.25
         weight_list.append(w)
-    weight_list = [1,1,1,1,1]
+    weight_list = [1,1,1,1,1,1]
     logger.info("weight list:", weight_list)
     return weight_list
 
@@ -340,7 +340,7 @@ class InteractionState(object):
         self.ep_explore_step[:] = 4500
 
         self.int_exclude_rooms = []
-        self.div_exclude_rooms =  [ (7,0),(12,0),(11,0),(13,0),(14,0),(21,0),(22,0),(23,0)]
+        self.div_exclude_rooms =  [(7,0),(12,0),(13,0),(14,0),(21,0),(22,0),(23,0)]
         self.divrew_exclude_rooms = [1,6,7,13,14,23]
         #self.div_exclude_rooms = [(1,0),(2,0),(5,0),(6,0)]
 
@@ -355,7 +355,7 @@ class InteractionState(object):
         self.socre_baseline =  8.5 #7.5 #0 #7.5i
 
         self.base_int_weight = clac_base_int_weight(num_agents)
-        self.ext_weight = [2,2,2,2,2]
+        self.ext_weight = [2,2,2,2,2,2]
 
         self.sd_rms = RunningMeanStd(shape=list(stochpol.ob_space.shape[:2])+[1], use_mpi= False)
 
@@ -386,12 +386,12 @@ class InteractionState(object):
             #ram_path='./ram_state_6600_23room'
             #path='./ram_state_6600_monitor_rews_23room'
 
-            ram_path='./ram_state_6700_7room'
-            path='./ram_state_6700_monitor_rews_7room'
+            #ram_path='./ram_state_6700_7room'
+            #path='./ram_state_6700_monitor_rews_7room'
 
 
-            #ram_path='./ram_state_7700_10room'
-            #path='./ram_state_7700_monitor_rews_10room'
+            ram_path='./ram_state_7700_10room'
+            path='./ram_state_7700_monitor_rews_10room'
 
             f = open(ram_path,'rb')
             self.init_ram_state = pickle.load(f)
@@ -407,8 +407,8 @@ class InteractionState(object):
             f.close()
 
 
-            #self.int_exclude_rooms = [(12,0)] #[(1,0),(2,0),(6,0),(14,0),(21,0),(22,0),(23,0)]
-            self.div_exclude_rooms = []  #[(10,0),(11,0),(12,0),(13,0)] #[(1,0),(2,0),(6,0),(7,0),(12,0),(13,0),(14,0),(21,0),(22,0),(23,0)]
+            self.int_exclude_rooms = [] #[(1,0),(2,0),(6,0),(14,0),(21,0),(22,0),(23,0)]
+            self.div_exclude_rooms = [(10,0)]  #[(10,0),(11,0),(12,0),(13,0)] #[(1,0),(2,0),(6,0),(7,0),(12,0),(13,0),(14,0),(21,0),(22,0),(23,0)]
 
             '''
             self.int_exclude_rooms = [(1,0),(2,0)]
@@ -1189,7 +1189,7 @@ class PpoAgent(object):
             if self.rnd_type =='oracle':
                 rews_int[mbenvinds] = self.I.buf_rews_int[mbenvinds]
             else:
-                rews_int[mbenvinds] = self.I.buf_rews_int[mbenvinds] / np.sqrt(self.I.rff_rms_int_list[agent_idx].var)
+                rews_int[mbenvinds] = self.I.buf_rews_int[mbenvinds]  / np.sqrt(self.I.rff_rms_int_list[agent_idx].var)
 
             self.mean_int_rew.append(np.mean(rews_int[mbenvinds]))
             self.max_int_rew.append(np.max(rews_int[mbenvinds]))
@@ -2609,10 +2609,10 @@ class PpoAgent(object):
                                         if self.I.buf_rews_ext[c+start][n] > 0 :
                                              #logger.info(rews_div[c,n], agent_idx, room_id)
                                              div_rew = (np.log(sp_prob[c,n]) - np.log(0.5))  * 2
-                                             if room_id ==5:
-                                                 div_rew = 0
+                                             #if room_id ==5  or room_id ==10:
+                                             #    div_rew = 0
                                              logger.info(base_vpred_ext,rews_div[c,n], div_rew ,agent_idx, room_id)
-                                             self.I.buf_rews_ext[c+start][n] = self.I.buf_rews_ext[c+start][n]*np.clip(div_rew,0,1)
+                                             self.I.buf_rews_ext[c+start][n] = self.I.buf_rews_ext[c+start][n]*np.clip(div_rew,-0.1,1)
 
                                     if stage_explore[c,n]:
                                         self.I.div_room_set[agent_idx].add(room_id)
@@ -2629,8 +2629,8 @@ class PpoAgent(object):
                                         self.I.int_coef[c+start][n] = self.int_coeff
                                         self.I.ext_coef[c+start][n] = self.I.ext_weight[agent_idx]
                                         
-                                        if room_id == 5:
-                                            rews_div[c,n] = -0.5
+                                        #if room_id == 5 or room_id == 10:
+                                        #    rews_div[c,n] = -1
                                         #rews_int[c,n] *= 5
                                     
                                     else:
@@ -2640,8 +2640,8 @@ class PpoAgent(object):
                                         #rews_int[c,n] = 0
 
                             #rews_div[rews_div<0] = -1
-                          
-                            int_weight = np.clip(rews_div  * 2  * stage_explore,-1, 1) + base_int_weight #* (1-stage_explore)
+                            #rews_div[rews_div>0] = rews_div[rews_div>0] * 4
+                            int_weight = np.clip(rews_div * 4 * stage_explore,0, 4) + base_int_weight #* (1-stage_explore)
                           
                             #rews_int = rews_int * int_weight
                             #int_weight[:] = 1  
