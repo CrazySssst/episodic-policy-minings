@@ -798,6 +798,13 @@ class CnnPolicy(StochasticPolicy):
         #rew_agent_label = tf.one_hot(self.rew_agent_label, self.num_agents, axis=-1)
         #rew_agent_label = tf.reshape(rew_agent_label,(-1,self.num_agents ))
 
+
+        # Predictor network.
+        ac_one_hot = tf.one_hot(self.ph_ac, self.ac_space.n, axis=2)
+        ac_one_hot = tf.reshape(ac_one_hot, (-1, self.ac_space.n))
+        def cond(x):
+            return tf.concat([x, ac_one_hot], 1)
+
         for ph in self.ph_ob.values():
             if len(ph.shape.as_list()) == 5:  # B,T,H,W,C
 
@@ -822,9 +829,9 @@ class CnnPolicy(StochasticPolicy):
                 phi = tf.nn.leaky_relu(conv(phi, 'c3r', nf=convfeat * 2 * 1, rf=3, stride=1, init_scale=np.sqrt(2)))
                 phi = to2d(phi)
         
-                phi = tf.nn.relu(fc(phi, 'fc1r', nh=rep_size, init_scale=np.sqrt(2)))
-                phi = tf.nn.relu(fc(phi, 'fc2r', nh=rep_size, init_scale=np.sqrt(2)))
-                disc_logits = fc(phi, 'fc3r', nh= self.num_agents, init_scale=np.sqrt(2))
+                phi = tf.nn.relu(fc(cond(phi), 'fc1r', nh=rep_size, init_scale=np.sqrt(2)))
+                phi = tf.nn.relu(fc(cond(phi), 'fc2r', nh=rep_size, init_scale=np.sqrt(2)))
+                disc_logits = fc(cond(phi), 'fc3r', nh= self.num_agents, init_scale=np.sqrt(2))
 
         one_hot_gidx = tf.one_hot(self.ph_agent_idx, self.num_agents , axis=-1)
         one_hot_gidx = tf.reshape(one_hot_gidx,(-1,self.num_agents))
